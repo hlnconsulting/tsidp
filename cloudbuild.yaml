@@ -2,8 +2,15 @@ substitutions:
   _ARTIFACT_REGISTRY_LOCATION: us-central1
 
 steps:
+  - name: golang:1.25
+    id: go-test
+    entrypoint: bash
+    args:
+      - -ceu
+      - go test ./...
+
   - name: gcr.io/cloud-builders/docker
-    id: test-build-and-push-amd64
+    id: build-and-push-amd64
     automapSubstitutions: true
     script: |
       #!/usr/bin/env bash
@@ -16,7 +23,6 @@ steps:
 
       image="${_ARTIFACT_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/containers/tsidp"
 
-      go test ./...
       docker build --platform linux/amd64 \
         --tag "${image}:${COMMIT_SHA}" \
         --tag "${image}:PROD" \
