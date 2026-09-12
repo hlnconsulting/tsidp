@@ -298,6 +298,9 @@ func TestTokenEndpointAuthMethods(t *testing.T) {
 			if !methodSet["client_secret_post"] {
 				t.Error("expected client_secret_post in token_endpoint_auth_methods_supported")
 			}
+			if !methodSet["none"] {
+				t.Error("expected none in token_endpoint_auth_methods_supported")
+			}
 		})
 	}
 }

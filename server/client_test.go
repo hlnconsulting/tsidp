@@ -244,6 +244,28 @@ func TestServeDynamicClientRegistration(t *testing.T) {
 			},
 		},
 		{
+			name:   "POST request - public PKCE client",
+			method: "POST",
+			body: `{
+				"redirect_uris": ["http://127.0.0.1:14567/callback"],
+				"token_endpoint_auth_method": "none",
+				"application_type": "native"
+			}`,
+			expectStatus: http.StatusCreated,
+			checkResponse: func(t *testing.T, body []byte) {
+				var rawResp map[string]any
+				if err := json.Unmarshal(body, &rawResp); err != nil {
+					t.Fatalf("failed to unmarshal response: %v", err)
+				}
+				if rawResp["token_endpoint_auth_method"] != "none" {
+					t.Errorf("expected public client auth method none, got %v", rawResp["token_endpoint_auth_method"])
+				}
+				if _, ok := rawResp["client_secret"]; ok {
+					t.Error("public client response must not contain client_secret")
+				}
+			},
+		},
+		{
 			name:         "POST request - blocked over funnel",
 			method:       "POST",
 			body:         `{"redirect_uris": ["https://example.com/callback"]}`,

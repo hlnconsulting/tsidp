@@ -656,6 +656,58 @@ func TestRefreshTokenFlow(t *testing.T) {
 	}
 }
 
+func TestPublicClientRefreshTokenFlow(t *testing.T) {
+	s := &IDPServer{
+		serverURL:    "https://idp.test.ts.net",
+		refreshToken: make(map[string]*AuthRequest),
+	}
+	s.lazySigner.Set(oidcTestingSigner(t))
+	s.refreshToken["public-refresh-token"] = &AuthRequest{
+		FunnelRP: &FunnelClient{
+			ID:                      "public-client",
+			TokenEndpointAuthMethod: "none",
+		},
+		ClientID:  "public-client",
+		Scopes:    []string{"openid", "email"},
+		ValidTill: time.Now().Add(time.Hour),
+		RemoteUser: &apitype.WhoIsResponse{
+			Node: &tailcfg.Node{
+				ID:        1,
+				Name:      "node1.example.ts.net",
+				User:      tailcfg.UserID(1),
+				Key:       key.NodePublic{},
+				Addresses: []netip.Prefix{},
+			},
+			UserProfile: &tailcfg.UserProfile{
+				LoginName:     "user@example.com",
+				DisplayName:   "Test User",
+				ProfilePicURL: "https://example.com/pic.jpg",
+			},
+		},
+	}
+
+	form := url.Values{
+		"grant_type":    {"refresh_token"},
+		"refresh_token": {"public-refresh-token"},
+		"client_id":     {"public-client"},
+	}
+	req := httptest.NewRequest("POST", "/token", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+	s.serveToken(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected public-client refresh to succeed, got %d: %s", rr.Code, rr.Body.String())
+	}
+	var resp oidcTokenResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode token response: %v", err)
+	}
+	if resp.AccessToken == "" || resp.RefreshToken == "" {
+		t.Fatal("expected rotated access and refresh tokens")
+	}
+}
+
 // TestTokenEndpointUnsupportedGrantType tests unsupported grant type handling
 func TestTokenEndpointUnsupportedGrantType(t *testing.T) {
 	tests := []struct {

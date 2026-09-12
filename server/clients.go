@@ -334,12 +334,21 @@ func (s *IDPServer) serveDynamicClientRegistration(w http.ResponseWriter, r *htt
 		return
 	}
 
-	clientID := generateClientID()
-	clientSecret := generateClientSecret()
-
 	// Set defaults
 	if registrationRequest.TokenEndpointAuthMethod == "" {
 		registrationRequest.TokenEndpointAuthMethod = "client_secret_basic"
+	}
+	if registrationRequest.TokenEndpointAuthMethod != "none" &&
+		registrationRequest.TokenEndpointAuthMethod != "client_secret_basic" &&
+		registrationRequest.TokenEndpointAuthMethod != "client_secret_post" {
+		writeHTTPError(w, r, http.StatusBadRequest, "invalid_client_metadata", "unsupported token_endpoint_auth_method", nil)
+		return
+	}
+
+	clientID := generateClientID()
+	clientSecret := ""
+	if registrationRequest.TokenEndpointAuthMethod != "none" {
+		clientSecret = generateClientSecret()
 	}
 	if len(registrationRequest.GrantTypes) == 0 {
 		registrationRequest.GrantTypes = []string{"authorization_code"}

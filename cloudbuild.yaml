@@ -1,0 +1,35 @@
+substitutions:
+  _ARTIFACT_REGISTRY_LOCATION: us-central1
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    id: test-build-and-push-amd64
+    automapSubstitutions: true
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      [[ "${PROJECT_ID}" == "nyc-dohmh-cir-colo" ]]
+      [[ "${LOCATION:-us-central1}" == "us-central1" ]]
+      [[ "${_ARTIFACT_REGISTRY_LOCATION}" == "us-central1" ]]
+      [[ "${COMMIT_SHA}" =~ ^[0-9a-f]{40}$ ]]
+
+      image="${_ARTIFACT_REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/containers/tsidp"
+
+      go test ./...
+      docker build --platform linux/amd64 \
+        --tag "${image}:${COMMIT_SHA}" \
+        --tag "${image}:PROD" \
+        --file Dockerfile .
+      architecture="$(docker image inspect \
+        "${image}:${COMMIT_SHA}" --format '{{.Architecture}}')"
+      [[ "${architecture}" == "amd64" ]]
+      docker push "${image}:${COMMIT_SHA}"
+      docker push "${image}:PROD"
+
+options:
+  machineType: E2_HIGHCPU_32
+  logging: CLOUD_LOGGING_ONLY
+
+# yamllint disable-line rule:line-length
+serviceAccount: projects/nyc-dohmh-cir-colo/serviceAccounts/nyc-infrastructure-mcp-build@nyc-dohmh-cir-colo.iam.gserviceaccount.com

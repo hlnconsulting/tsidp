@@ -904,6 +904,17 @@ func (ar *AuthRequest) allowRelyingParty(r *http.Request) (int, error) {
 		return http.StatusUnauthorized, fmt.Errorf("tsidp: no relying party configured")
 	}
 
+	if ar.FunnelRP.TokenEndpointAuthMethod == "none" {
+		clientID := r.FormValue("client_id")
+		if clientID == "" {
+			return http.StatusUnauthorized, fmt.Errorf("tsidp: client_id is required for public clients")
+		}
+		if subtle.ConstantTimeCompare([]byte(clientID), []byte(ar.FunnelRP.ID)) != 1 {
+			return http.StatusBadRequest, fmt.Errorf("tsidp: client_id mismatch")
+		}
+		return http.StatusOK, nil
+	}
+
 	clientID, clientSecret, ok := r.BasicAuth()
 	if !ok {
 		clientID = r.FormValue("client_id")
