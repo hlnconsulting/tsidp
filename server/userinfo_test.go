@@ -203,6 +203,26 @@ func TestExtraUserInfo(t *testing.T) {
 	}
 }
 
+func TestUserInfoCORSHeaders(t *testing.T) {
+	s := &IDPServer{serverURL: "https://idp.test.ts.net"}
+	req := httptest.NewRequest("OPTIONS", "/userinfo", nil)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("expected 204 No Content, got %d", rr.Code)
+	}
+	if got := rr.Header().Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Errorf("expected Access-Control-Allow-Origin '*', got %q", got)
+	}
+	if got := rr.Header().Get("Access-Control-Allow-Methods"); got != "GET, OPTIONS" {
+		t.Errorf("expected Access-Control-Allow-Methods 'GET, OPTIONS', got %q", got)
+	}
+	if got := rr.Header().Get("Access-Control-Allow-Headers"); got != "*" {
+		t.Errorf("expected Access-Control-Allow-Headers '*', got %q", got)
+	}
+}
+
 func TestUserInfoRealishEmail(t *testing.T) {
 
 	// Create a fake tailscale Node

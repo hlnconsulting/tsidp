@@ -49,6 +49,13 @@ func (ui userInfo) toMap() map[string]any {
 
 // serveUserInfo handles the /userinfo endpoint
 func (s *IDPServer) serveUserInfo(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	if r.Method != "GET" {
 		writeHTTPError(w, r, http.StatusMethodNotAllowed, ecInvalidRequest, "method not allowed", nil)
 		return
