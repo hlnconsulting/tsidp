@@ -225,6 +225,7 @@ The Docker image exposes the CLI flags through environment variables. If omitted
 | `TS_HOSTNAME=<hostname>` _\*note prefix_ | `-hostname <hostname>`     |
 | `TSIDP_PORT=<port>`                      | `-port <port>`             |
 | `TSIDP_LOCAL_PORT=<local-port>`          | `-local-port <local-port>` |
+| `TSIDP_LOCAL_LISTEN_ADDR=<address>`      | `-local-listen-addr <address>` |
 | `TSIDP_USE_LOCAL_TAILSCALED=1`           | `-use-local-tailscaled`    |
 | `TSIDP_USE_FUNNEL=1`                     | `-funnel`                  |
 | `TSIDP_ENABLE_STS=1`                     | `-enable-sts`              |

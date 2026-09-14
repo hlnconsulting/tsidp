@@ -39,6 +39,7 @@ import (
 var (
 	flagPort               = flag.Int("port", envIntOr("TSIDP_PORT", 443), "port to listen on")
 	flagLocalPort          = flag.Int("local-port", envIntOr("TSIDP_LOCAL_PORT", -1), "allow requests from localhost")
+	flagLocalListenAddr    = flag.String("local-listen-addr", cmp.Or(envknob.String("TSIDP_LOCAL_LISTEN_ADDR"), "127.0.0.1"), "address for the optional local listener")
 	flagUseLocalTailscaled = flag.Bool("use-local-tailscaled", envknob.Bool("TSIDP_USE_LOCAL_TAILSCALED"), "use local tailscaled instead of tsnet")
 	flagFunnel             = flag.Bool("funnel", envknob.Bool("TSIDP_USE_FUNNEL"), "use Tailscale Funnel to make tsidp available on the public internet")
 	flagHostname           = flag.String("hostname", cmp.Or(envknob.String("TS_HOSTNAME"), "idp"), "tsnet hostname to use instead of idp")
@@ -233,12 +234,13 @@ func main() {
 	slog.Info("tsidp server started", slog.String("server_url", srv.ServerURL()))
 
 	if *flagLocalPort != -1 {
-		loopbackURL := fmt.Sprintf("http://localhost:%d", *flagLocalPort)
-		slog.Info("Also running tsidp at loopback", slog.String("loopback_url", loopbackURL))
-		srv.SetLoopbackURL(loopbackURL)
-		ln, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", *flagLocalPort))
+		localURL := fmt.Sprintf("http://%s:%d", *flagLocalListenAddr, *flagLocalPort)
+		slog.Info("Also running tsidp on local listener", slog.String("local_url", localURL))
+		publicLocalURL := fmt.Sprintf("http://localhost:%d", *flagLocalPort)
+		srv.SetLoopbackURL(publicLocalURL)
+		ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", *flagLocalListenAddr, *flagLocalPort))
 		if err != nil {
-			slog.Error("failed to listen on loopback", slog.Any("error", err))
+			slog.Error("failed to listen on local address", slog.Any("error", err))
 			os.Exit(1)
 		}
 		lns = append(lns, ln)
