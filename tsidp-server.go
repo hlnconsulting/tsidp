@@ -230,6 +230,10 @@ func main() {
 		slog.Error("could not load funnel clients", slog.Any("error", err))
 		os.Exit(1)
 	}
+	if err := srv.LoadRefreshTokens(); err != nil {
+		slog.Error("could not load refresh tokens", slog.Any("error", err))
+		os.Exit(1)
+	}
 
 	slog.Info("tsidp server started", slog.String("server_url", srv.ServerURL()))
 
