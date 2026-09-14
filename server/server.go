@@ -265,6 +265,12 @@ func (s *IDPServer) newMux() http.Handler {
 
 	protect := csrf.New()
 	protect.AddTrustedOrigin(s.serverURL)
+	for _, origin := range strings.Split(os.Getenv("TSIDP_TRUSTED_ORIGINS"), ",") {
+		origin = strings.TrimSpace(origin)
+		if origin != "" {
+			protect.AddTrustedOrigin(origin)
+		}
+	}
 	return protect.Handler(mux)
 }
 
