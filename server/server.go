@@ -197,7 +197,8 @@ func (s *IDPServer) SetLoopbackURL(url string) {
 	s.loopbackURL = url
 }
 
-// CleanupExpiredTokens removes expired tokens from memory
+// CleanupExpiredTokens removes expired tokens from memory and persists the
+// refresh-token store when it changes.
 func (s *IDPServer) CleanupExpiredTokens() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -219,9 +220,16 @@ func (s *IDPServer) CleanupExpiredTokens() {
 	}
 
 	// Clean up refresh tokens (if they have an expiry)
+	refreshTokensChanged := false
 	for token, ar := range s.refreshToken {
 		if !ar.ValidTill.IsZero() && now.After(ar.ValidTill) {
 			delete(s.refreshToken, token)
+			refreshTokensChanged = true
+		}
+	}
+	if refreshTokensChanged {
+		if err := s.storeRefreshTokensLocked(); err != nil {
+			slog.Error("failed to persist refresh-token cleanup", slog.Any("error", err))
 		}
 	}
 }
@@ -265,6 +273,12 @@ func (s *IDPServer) newMux() http.Handler {
 
 	protect := csrf.New()
 	protect.AddTrustedOrigin(s.serverURL)
+	for _, origin := range strings.Split(os.Getenv("TSIDP_TRUSTED_ORIGINS"), ",") {
+		origin = strings.TrimSpace(origin)
+		if origin != "" {
+			protect.AddTrustedOrigin(origin)
+		}
+	}
 	return protect.Handler(mux)
 }
 

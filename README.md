@@ -132,6 +132,11 @@ $ TAILSCALE_USE_WIP_CODE=1 TS_AUTHKEY={YOUR_TAILSCALE_AUTHKEY} TSNET_FORCE_LOGIN
 - Configure grants in the [**Access controls**](https://login.tailscale.com/admin/acls/) page of the Tailscale admin console.
 - App capability grants are per request and updated immediately. No need to restart tsidp.
 
+For browser-based OAuth clients hosted on a different origin, set
+`TSIDP_TRUSTED_ORIGINS` to a comma-separated list of exact HTTPS origins. The
+TSIDP origin is always trusted automatically; this setting is only for the
+separate browser client origins that must call the token endpoint.
+
 ### Example
 
 ```hujson
@@ -225,6 +230,7 @@ The Docker image exposes the CLI flags through environment variables. If omitted
 | `TS_HOSTNAME=<hostname>` _\*note prefix_ | `-hostname <hostname>`     |
 | `TSIDP_PORT=<port>`                      | `-port <port>`             |
 | `TSIDP_LOCAL_PORT=<local-port>`          | `-local-port <local-port>` |
+| `TSIDP_LOCAL_LISTEN_ADDR=<address>`      | `-local-listen-addr <address>` |
 | `TSIDP_USE_LOCAL_TAILSCALED=1`           | `-use-local-tailscaled`    |
 | `TSIDP_USE_FUNNEL=1`                     | `-funnel`                  |
 | `TSIDP_ENABLE_STS=1`                     | `-enable-sts`              |

@@ -251,7 +251,15 @@ func (s *IDPServer) handleRefreshTokenGrant(w http.ResponseWriter, r *http.Reque
 	// Delete the refresh token so it can not be reused. It is intentional that
 	// refresh tokens can only be used once to prevent various race conditions.
 	// If the response is an error the user will have to reauthenticate.
-	delete(s.refreshToken, rt)
+	if ok {
+		delete(s.refreshToken, rt)
+		if err := s.storeRefreshTokensLocked(); err != nil {
+			s.refreshToken[rt] = ar
+			s.mu.Unlock()
+			writeHTTPError(w, r, http.StatusInternalServerError, ecServerError, "could not persist refresh token state", err)
+			return
+		}
+	}
 
 	s.mu.Unlock()
 
@@ -618,6 +626,13 @@ func (s *IDPServer) issueTokens(w http.ResponseWriter, r *http.Request, ar *Auth
 	rtAuth := *ar // copy the authRequest
 	rtAuth.ValidTill = iat.Add(RefreshTokenDuration)
 	mak.Set(&s.refreshToken, rt, &rtAuth)
+	if err := s.storeRefreshTokensLocked(); err != nil {
+		delete(s.refreshToken, rt)
+		delete(s.accessToken, at)
+		s.mu.Unlock()
+		writeHTTPError(w, r, http.StatusInternalServerError, ecServerError, "could not persist refresh token state", err)
+		return
+	}
 	s.mu.Unlock()
 
 	slog.Info("token issued",
