@@ -855,7 +855,7 @@ func (s *IDPServer) serveIntrospect(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if ar.RemoteUser != nil && ar.RemoteUser.Node != nil {
-			resp["sub"] = fmt.Sprintf("%d", ar.RemoteUser.Node.User)
+			resp["sub"] = ar.RemoteUser.Node.User.String()
 
 			// Add username claim (RFC 7662 recommendation)
 			if ar.RemoteUser.UserProfile != nil && ar.RemoteUser.UserProfile.LoginName != "" {
