@@ -2,7 +2,7 @@ substitutions:
   _ARTIFACT_REGISTRY_LOCATION: us-central1
 
 steps:
-  - name: golang:1.26.6
+  - name: golang:1.27.3
     id: go-test
     entrypoint: bash
     args:

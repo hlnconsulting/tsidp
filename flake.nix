@@ -13,8 +13,8 @@
       systems,
     }:
     let
-      goVersion = "1.26.6";
-      goHash = "sha256-oHIcVMaIkBRI13rZs+x+p8R0cwdV/4kTgukuy5P/LLE=";
+      goVersion = "1.27.3";
+      goHash = "sha256-bndJA1zzYPBrJXXRYup535/ajvZxiJ5cN1+OUHd/Jrs=";
       eachSystem =
         f:
         nixpkgs.lib.genAttrs (import systems) (
@@ -71,7 +71,7 @@
       devShells = eachSystem (pkgs: {
         default = pkgs.mkShell {
           packages = [
-            pkgs.go_1_24
+            pkgs.go_1_26
             pkgs.gopls
           ];
         };
