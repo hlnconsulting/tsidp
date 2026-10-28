@@ -12,7 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"gopkg.in/square/go-jose.v2/jwt"
+	jose "github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"tailscale.com/client/tailscale/apitype"
 	"tailscale.com/tailcfg"
 	"tailscale.com/types/key"
@@ -35,7 +36,7 @@ func TestSubjectConsistentAcrossTokenInterfaces(t *testing.T) {
 	if err := json.Unmarshal(tokensRecorder.Body.Bytes(), &tokens); err != nil {
 		t.Fatal(err)
 	}
-	token, err := jwt.ParseSigned(tokens.IDToken)
+	token, err := jwt.ParseSigned(tokens.IDToken, []jose.SignatureAlgorithm{jose.RS256})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -24,7 +24,7 @@
               inherit system;
               overlays = [
                 (final: prev: {
-                  go_1_26 = prev.go_1_26.overrideAttrs {
+                  go_1_27 = prev.go_1_27.overrideAttrs {
                     version = goVersion;
                     src = prev.fetchurl {
                       url = "https://go.dev/dl/go${goVersion}.src.tar.gz";
@@ -41,7 +41,7 @@
       formatter = eachSystem (pkgs: pkgs.nixfmt-tree);
 
       packages = eachSystem (pkgs: {
-        tsidp = pkgs.buildGo126Module {
+        tsidp = pkgs.buildGo127Module {
           pname = "tsidp";
           version = if (self ? shortRev) then self.shortRev else "dev";
           src = pkgs.nix-gitignore.gitignoreSource [ ] ./.;
