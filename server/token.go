@@ -243,33 +243,22 @@ func (s *IDPServer) handleRefreshTokenGrant(w http.ResponseWriter, r *http.Reque
 	}
 
 	s.mu.Lock()
-	ar, ok := s.refreshToken[rt]
-	if ok && ar.ValidTill.Before(time.Now()) {
-		ok = false
+	original, ok := s.refreshToken[rt]
+	var ar *AuthRequest
+	if ok && !original.ValidTill.Before(time.Now()) {
+		snapshot := *original
+		ar = &snapshot
 	}
-
-	// Delete the refresh token so it can not be reused. It is intentional that
-	// refresh tokens can only be used once to prevent various race conditions.
-	// If the response is an error the user will have to reauthenticate.
-	if ok {
-		delete(s.refreshToken, rt)
-		if err := s.storeRefreshTokensLocked(); err != nil {
-			s.refreshToken[rt] = ar
-			s.mu.Unlock()
-			writeHTTPError(w, r, http.StatusInternalServerError, ecServerError, "could not persist refresh token state", err)
-			return
-		}
-	}
-
 	s.mu.Unlock()
-
-	if !ok {
+	if ar == nil {
+		slog.Warn("refresh rejected", slog.String("reason", "unknown_or_expired"))
 		writeHTTPError(w, r, http.StatusBadRequest, ecInvalidGrant, "invalid refresh token", nil)
 		return
 	}
 
 	// Validate client authentication
 	if httpStatusCode, err := ar.allowRelyingParty(r); err != nil {
+		slog.Warn("refresh rejected", slog.String("reason", "client_authentication_failed"), slog.String("client_id", ar.ClientID))
 		writeHTTPError(w, r, httpStatusCode, ecInvalidClient, "client authentication failed", err)
 		return
 	}
@@ -280,6 +269,7 @@ func (s *IDPServer) handleRefreshTokenGrant(w http.ResponseWriter, r *http.Reque
 		// Validate requested resources are a subset of original grant
 		validatedResources, err := s.validateResourcesForUser(ar.RemoteUser, resources)
 		if err != nil {
+			slog.Warn("refresh rejected", slog.String("reason", "resource_not_authorized"), slog.String("client_id", ar.ClientID))
 			writeHTTPError(w, r, http.StatusBadRequest, ecInvalidRequest, "resource validation failed", err)
 			return
 		}
@@ -288,6 +278,7 @@ func (s *IDPServer) handleRefreshTokenGrant(w http.ResponseWriter, r *http.Reque
 		if len(ar.Resources) > 0 {
 			for _, requested := range validatedResources {
 				if found := slices.Contains(ar.Resources, requested); !found {
+					slog.Warn("refresh rejected", slog.String("reason", "resource_outside_grant"), slog.String("client_id", ar.ClientID))
 					writeHTTPError(w, r, http.StatusBadRequest, ecInvalidRequest, "requested resource not in original grant", nil)
 					return
 				}
@@ -299,6 +290,25 @@ func (s *IDPServer) handleRefreshTokenGrant(w http.ResponseWriter, r *http.Reque
 		arCopy.Resources = validatedResources
 		ar = &arCopy
 	}
+
+	// Consume only a validated grant. Recheck under the lock so competing valid
+	// refreshes still have exactly one winner, even after request validation.
+	s.mu.Lock()
+	current, exists := s.refreshToken[rt]
+	if !exists || current != original || current.ValidTill.Before(time.Now()) {
+		s.mu.Unlock()
+		slog.Warn("refresh rejected", slog.String("reason", "consumed_or_expired_during_validation"), slog.String("client_id", ar.ClientID))
+		writeHTTPError(w, r, http.StatusBadRequest, ecInvalidGrant, "invalid refresh token", nil)
+		return
+	}
+	delete(s.refreshToken, rt)
+	if err := s.storeRefreshTokensLocked(); err != nil {
+		s.refreshToken[rt] = original
+		s.mu.Unlock()
+		writeHTTPError(w, r, http.StatusInternalServerError, ecServerError, "could not persist refresh token state", err)
+		return
+	}
+	s.mu.Unlock()
 
 	s.issueTokens(w, r, ar)
 }
@@ -946,7 +956,7 @@ func (ar *AuthRequest) allowRelyingParty(r *http.Request) (int, error) {
 		return http.StatusBadRequest, fmt.Errorf("tsidp: client_id mismatch")
 	}
 	if clientSecretcmp != 1 {
-		return http.StatusUnauthorized, fmt.Errorf("tsidp: invalid client secret: [%s] [%s]", clientID, clientSecret)
+		return http.StatusUnauthorized, fmt.Errorf("tsidp: invalid client secret")
 	}
 	return http.StatusOK, nil
 }
